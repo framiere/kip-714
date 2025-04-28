@@ -21,6 +21,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class KafkaClientTelemetry implements ClientTelemetry, MetricsReporter, ClientTelemetryReceiver {
 
@@ -33,6 +35,7 @@ public class KafkaClientTelemetry implements ClientTelemetry, MetricsReporter, C
     private final Producer<String, String> producer;
     private final String topic;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
 
     public KafkaClientTelemetry() {
@@ -57,6 +60,7 @@ public class KafkaClientTelemetry implements ClientTelemetry, MetricsReporter, C
         if (producer != null) {
             producer.close();
         }
+        executor.shutdown();
     }
 
     @Override
@@ -70,24 +74,43 @@ public class KafkaClientTelemetry implements ClientTelemetry, MetricsReporter, C
 
     @Override
     public void exportMetrics(AuthorizableRequestContext context, ClientTelemetryPayload payload) {
-        try {
-            String json = toJson(context, payload);
-            producer.send(new ProducerRecord<>(
-                    topic,
-                    null,
-                    "client_telemetry",
-                    json,
-                    List.of(new RecordHeader("via", "KIP-714".getBytes()))), (recordMetadata, e) -> {
-                if (e != null) {
-                    log.error("Error sending telemetry data to Kafka", e);
-                } else {
-                    log.info("Telemetry data sent to Kafka topic {} at offset {}", recordMetadata.topic(), recordMetadata.offset());
+        executor.submit(() -> {
+            try {
+                // Parse and check metrics before serializing
+                MetricsData data = MetricsData.parseFrom(payload.data());
+                boolean hasMetrics = false;
+                for (ResourceMetrics resourceMetrics : data.getResourceMetricsList()) {
+                    for (ScopeMetrics scopeMetrics : resourceMetrics.getScopeMetricsList()) {
+                        if (!scopeMetrics.getMetricsList().isEmpty()) {
+                            hasMetrics = true;
+                            break;
+                        }
+                    }
+                    if (hasMetrics) break;
                 }
-            });
-            log.info("Context: {},  Payload:{}", context, json);
-        } catch (Exception e) {
-            log.error("Could not process the metric", e);
-        }
+                if (!hasMetrics) {
+                    log.info("No metrics to export, skipping send to Kafka.");
+                    return;
+                }
+
+                String json = toJson(context, payload);
+                producer.send(new ProducerRecord<>(
+                        topic,
+                        null,
+                        "client_telemetry",
+                        json,
+                        List.of(new RecordHeader("via", "KIP-714".getBytes()))), (recordMetadata, e) -> {
+                    if (e != null) {
+                        log.error("Error sending telemetry data to Kafka", e);
+                    } else {
+                        log.info("Telemetry data sent to Kafka topic {} at offset {}", recordMetadata.topic(), recordMetadata.offset());
+                    }
+                });
+                log.info("Context: {},  Payload:{}", context, json);
+            } catch (Exception e) {
+                log.error("Could not process the metric", e);
+            }
+        });
     }
 
     private String toJson(AuthorizableRequestContext context, ClientTelemetryPayload payload) throws InvalidProtocolBufferException, JsonProcessingException {
