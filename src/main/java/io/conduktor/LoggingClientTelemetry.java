@@ -1,5 +1,10 @@
 package io.conduktor;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.util.JsonFormat;
+import io.opentelemetry.proto.metrics.v1.MetricsData;
 import org.apache.kafka.common.metrics.KafkaMetric;
 import org.apache.kafka.common.metrics.MetricsReporter;
 import org.apache.kafka.server.authorizer.AuthorizableRequestContext;
@@ -27,6 +32,15 @@ public class LoggingClientTelemetry implements ClientTelemetry, MetricsReporter,
     }
 
     @Override
+    public void exportMetrics(AuthorizableRequestContext context, ClientTelemetryPayload payload) {
+        try {
+            log.info("Context: {}", context);
+        } catch (Exception e) {
+            //
+        }
+    }
+
+    @Override
     public void metricChange(KafkaMetric kafkaMetric) {
         log.info("Changing " + kafkaMetric.metricName() + " to " + kafkaMetric.metricValue().toString());
     }
@@ -36,9 +50,6 @@ public class LoggingClientTelemetry implements ClientTelemetry, MetricsReporter,
         log.info("Removing: " + metric.metricName());
     }
 
-    @Override
-    public void close() {
-    }
 
     @Override
     public void configure(Map<String, ?> configs) {
@@ -51,7 +62,7 @@ public class LoggingClientTelemetry implements ClientTelemetry, MetricsReporter,
     }
 
     @Override
-    public void exportMetrics(AuthorizableRequestContext context, ClientTelemetryPayload payload) {
-        log.info("Context: {},  Payload:{}", context, payload.data().toString());
+    public void close() {
     }
+
 }
