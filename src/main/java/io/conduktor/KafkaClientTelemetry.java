@@ -120,7 +120,7 @@ public class KafkaClientTelemetry implements ClientTelemetry, MetricsReporter, C
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, CompressionType.ZSTD.name);
         props.put(ProducerConfig.BATCH_SIZE_CONFIG, 1024 * 1024 * 2);
-        props.put(ProducerConfig.LINGER_MS_CONFIG, 500);
+        props.put(ProducerConfig.LINGER_MS_CONFIG, 1000);
         return new KafkaProducer<>(props);
     }
 
