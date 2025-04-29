@@ -32,20 +32,16 @@ import static io.opentelemetry.proto.metrics.v1.MetricsData.parseFrom;
 public class KafkaClientTelemetry implements ClientTelemetry, MetricsReporter, ClientTelemetryReceiver {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaClientTelemetry.class);
-    private static final String DEFAULT_METRICS_TOPIC = "default-kafka-metrics";
-    private static final String DEFAULT_BROKER_ADDRESS = "localhost:9092";
     private static final String METRICS_TOPIC_ENV = "KAFKA_METRICS_TOPIC";
     private static final String BROKER_ADDRESS_ENV = "KAFKA_BROKER_ADDRESS";
 
     private final Producer<String, String> producer;
     private final String topic;
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-
     public KafkaClientTelemetry() {
-        topic = System.getenv().getOrDefault(METRICS_TOPIC_ENV, DEFAULT_METRICS_TOPIC);
-        producer = metricsProducer(System.getenv().getOrDefault(BROKER_ADDRESS_ENV, DEFAULT_BROKER_ADDRESS));
+        topic = System.getenv().getOrDefault(METRICS_TOPIC_ENV, "kafka-metrics");
+        producer = metricsProducer(System.getenv().getOrDefault(BROKER_ADDRESS_ENV, "localhost:9092"));
     }
 
     @Override
@@ -109,7 +105,7 @@ public class KafkaClientTelemetry implements ClientTelemetry, MetricsReporter, C
         contextNode.put("securityProtocol", "" + context.securityProtocol());
 
         metricsJson.put("context", contextNode);
-        metricsJson.objectNode().rawValueNode(new RawValue(JsonFormat.printer().print(parseFrom(payload.data()))));
+        metricsJson.putRawValue("data", new RawValue(JsonFormat.printer().print(parseFrom(payload.data()))));
         return mapper.writeValueAsString(metricsJson);
     }
 
