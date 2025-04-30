@@ -1,10 +1,5 @@
 package io.conduktor;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.util.JsonFormat;
-import io.opentelemetry.proto.metrics.v1.MetricsData;
 import org.apache.kafka.common.metrics.KafkaMetric;
 import org.apache.kafka.common.metrics.MetricsReporter;
 import org.apache.kafka.server.authorizer.AuthorizableRequestContext;
@@ -20,9 +15,6 @@ import java.util.Map;
 public class LoggingClientTelemetry implements ClientTelemetry, MetricsReporter, ClientTelemetryReceiver {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingClientTelemetry.class);
-
-    public LoggingClientTelemetry() {
-    }
 
     @Override
     public void init(List<KafkaMetric> metrics) {
@@ -50,7 +42,6 @@ public class LoggingClientTelemetry implements ClientTelemetry, MetricsReporter,
         log.info("Removing: " + metric.metricName());
     }
 
-
     @Override
     public void configure(Map<String, ?> configs) {
         log.info("Configuration: {}", configs);
@@ -64,5 +55,4 @@ public class LoggingClientTelemetry implements ClientTelemetry, MetricsReporter,
     @Override
     public void close() {
     }
-
 }
